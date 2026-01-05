@@ -2,6 +2,7 @@ package com.phishguard.app.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class BottomNavItem(
@@ -19,7 +20,7 @@ sealed class BottomNavItem(
     object Activity : BottomNavItem(
         route = "activity",
         title = "Activity",
-        icon = Icons.Default.List
+        icon = Icons.AutoMirrored.Filled.List
     )
 
     object Apps : BottomNavItem(

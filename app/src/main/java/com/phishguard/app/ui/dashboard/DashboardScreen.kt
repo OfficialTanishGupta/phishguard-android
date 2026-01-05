@@ -1,17 +1,31 @@
 package com.phishguard.app.ui.dashboard
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.ExperimentalMaterial3Api
-
+import com.phishguard.app.system.ProtectionService
+import com.phishguard.app.system.UsagePermissionHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen() {
-    var isActive by remember { mutableStateOf(true) }
+
+    val context = LocalContext.current
+    var isProtectionEnabled by remember { mutableStateOf(false) }
+
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { }
 
     Scaffold(
         topBar = {
@@ -20,6 +34,7 @@ fun DashboardScreen() {
             )
         }
     ) { padding ->
+
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -28,39 +43,57 @@ fun DashboardScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isActive)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("Privacy Shield", style = MaterialTheme.typography.titleMedium)
+            Card {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Protection Status")
                     Text(
-                        if (isActive) "ACTIVE" else "PAUSED",
+                        if (isProtectionEnabled) "ACTIVE" else "INACTIVE",
                         style = MaterialTheme.typography.headlineSmall
                     )
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Masking Level")
-                    Text("Medium", style = MaterialTheme.typography.titleLarge)
-                }
-            }
-
             Button(
-                onClick = { isActive = !isActive },
+                onClick = {
+
+                    // 1️⃣ Usage access permission
+                    if (!UsagePermissionHelper.hasUsageAccess(context)) {
+                        UsagePermissionHelper.openUsageAccessSettings(context)
+                        return@Button
+                    }
+
+                    // 2️⃣ Notification permission (Android 13+)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (
+                            context.checkSelfPermission(
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notificationPermissionLauncher.launch(
+                                Manifest.permission.POST_NOTIFICATIONS
+                            )
+                            return@Button
+                        }
+                    }
+
+                    val intent = Intent(context, ProtectionService::class.java)
+
+                    if (!isProtectionEnabled) {
+                        context.startForegroundService(intent)
+                        isProtectionEnabled = true
+                    } else {
+                        context.stopService(intent)
+                        isProtectionEnabled = false
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (isActive) "Pause Protection" else "Resume Protection")
+                Text(
+                    if (isProtectionEnabled)
+                        "Stop Background Protection"
+                    else
+                        "Start Background Protection"
+                )
             }
         }
     }

@@ -1,25 +1,21 @@
 package com.phishguard.app.ui.apps
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
-fun AppsScreen() {
+fun AppsScreen(viewModel: AppsViewModel = viewModel()) {
 
-    var apps by remember {
-        mutableStateOf(
-            listOf(
-                ProtectedApp("Instagram", true),
-                ProtectedApp("YouTube", false),
-                ProtectedApp("Facebook", false)
-            )
-        )
-    }
+    val apps by viewModel.apps.collectAsState()
 
     LazyColumn(
         modifier = Modifier
@@ -28,15 +24,8 @@ fun AppsScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(apps) { app ->
-            AppToggleItem(
-                appName = app.name,
-                enabled = app.enabled
-            ) { isEnabled ->
-                apps = apps.map {
-                    if (it.name == app.name)
-                        it.copy(enabled = isEnabled)
-                    else it
-                }
+            RealAppToggleItem(app) { enabled ->
+                viewModel.toggleApp(app.packageName, enabled)
             }
         }
     }
